@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Agent Weekly Performance Dashboard — WK16</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #14181f;
+    --surface2: #1b2029;
+    --border: #252c38;
+    --text: #e8ecf2;
+    --muted: #6b7688;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --red: #ef4444;
+    --green-bg: rgba(34,197,94,0.12);
+    --yellow-bg: rgba(234,179,8,0.12);
+    --orange-bg: rgba(249,115,22,0.12);
+    --red-bg: rgba(239,68,68,0.12);
+    --green-border: rgba(34,197,94,0.3);
+    --yellow-border: rgba(234,179,8,0.3);
+    --orange-border: rgba(249,115,22,0.3);
+    --red-border: rgba(239,68,68,0.3);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-dot {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-sub { font-size: 12px; color: var(--muted); margin-top: 1px; font-family: 'DM Mono', monospace; }
+
+  .week-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+  }
+
+  /* KPI Cards */
+  .kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 24px 32px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .kpi-value { font-family: 'DM Mono', monospace; font-size: 28px; font-weight: 500; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Controls */
+  .controls {
+    padding: 0 32px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap { position: relative; flex: 1; max-width: 280px; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px 9px 38px;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .filter-group { display: flex; gap: 8px; }
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    padding: 9px 16px;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .sort-label { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  /* Table */
+  .table-wrap {
+    padding: 0 32px 32px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--text); }
+  th .sort-icon { display: inline-block; margin-left: 4px; opacity: 0.4; font-size: 10px; }
+  th.sorted { color: var(--accent2); }
+  th.sorted .sort-icon { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+
+  td {
+    padding: 14px 16px;
+    vertical-align: middle;
+  }
+
+  .agent-name { font-weight: 600; font-size: 13px; }
+  .agent-row { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  /* Metric cells */
+  .metric-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .metric-cell .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .green { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+  .green .dot { background: var(--green); }
+  .yellow { background: var(--yellow-bg); border: 1px solid var(--yellow-border); color: var(--yellow); }
+  .yellow .dot { background: var(--yellow); }
+  .orange { background: var(--orange-bg); border: 1px solid var(--orange-border); color: var(--orange); }
+  .orange .dot { background: var(--orange); }
+  .red { background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red); }
+  .red .dot { background: var(--red); }
+
+  .handles-cell {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  .no-csat {
+    font-size: 11px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--muted);
+    display: none;
+  }
+  .empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 14px; }
+
+  /* Legend */
+  .legend {
+    padding: 0 32px 24px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-sep { color: var(--border); }
+
+  /* Target bar */
+  .target-bar {
+    padding: 0 32px 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .target-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  .target-chip .tc-label { color: var(--muted); }
+  .target-chip .tc-val { font-family: 'DM Mono', monospace; font-weight: 500; color: var(--accent2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .filter-btn.active-red { background: var(--red); border-color: var(--red); color: #fff; }
+  .filter-btn.active-yellow { background: var(--yellow); border-color: var(--yellow); color: #000; }
+  .filter-btn.active-orange { background: var(--orange); border-color: var(--orange); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot">📊</div>
+    <div>
+      <div class="header-title">Agent Performance Dashboard</div>
+      <div class="header-sub">Chat Operations · Weekly View</div>
+    </div>
+  </div>
+  <div class="week-badge">WK 16 · 13–19 Apr 2026</div>
+</div>
+
+<div class="kpi-bar" id="kpiBar"></div>
+
+<div class="target-bar">
+  <div class="target-chip"><span class="tc-label">CSAT — Great</span><span class="tc-val" style="color:var(--green)">≥ 4.8</span></div>
+  <div class="target-chip"><span class="tc-label">CSAT — Good</span><span class="tc-val" style="color:var(--yellow)">4.5 – 4.7</span></div>
+  <div class="target-chip"><span class="tc-label">CSAT — Need Improvement</span><span class="tc-val" style="color:var(--orange)">4.0 – 4.4</span></div>
+  <div class="target-chip"><span class="tc-label">CSAT — Critical</span><span class="tc-val" style="color:var(--red)">< 4.0</span></div>
+  <div class="target-chip" style="margin-left:8px"><span class="tc-label">AHT — Great</span><span class="tc-val" style="color:var(--green)">≤ 14 min</span></div>
+  <div class="target-chip"><span class="tc-label">AHT — Good</span><span class="tc-val" style="color:var(--yellow)">14 – 19 min</span></div>
+  <div class="target-chip"><span class="tc-label">AHT — Need Improvement</span><span class="tc-val" style="color:var(--orange)">19 – 22 min</span></div>
+  <div class="target-chip"><span class="tc-label">AHT — Critical</span><span class="tc-val" style="color:var(--red)">> 22 min</span></div>
+  <div class="target-chip" style="margin-left:8px"><span class="tc-label">Avail — Great</span><span class="tc-val" style="color:var(--green)">≥ 7.5h</span></div>
+  <div class="target-chip"><span class="tc-label">Avail — Good</span><span class="tc-val" style="color:var(--yellow)">6.5 – 7.4h</span></div>
+  <div class="target-chip"><span class="tc-label">Avail — Need Improvement</span><span class="tc-val" style="color:var(--orange)">4 – 6.4h</span></div>
+  <div class="target-chip"><span class="tc-label">Avail — Critical</span><span class="tc-val" style="color:var(--red)">< 4h</span></div>
+</div>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="searchInput" placeholder="Search agent name…" oninput="renderTable()">
+  </div>
+  <div class="filter-group">
+    <button class="filter-btn active" id="f-all" onclick="setFilter('all')">All Agents</button>
+    <button class="filter-btn" id="f-top" onclick="setFilter('top')">Top Performers</button>
+    <button class="filter-btn" id="f-active" onclick="setFilter('active')">Active This Week</button>
+    <button class="filter-btn" id="f-improve" onclick="setFilter('improve')">Needs Improvement</button>
+    <button class="filter-btn" id="f-low" onclick="setFilter('low')">Low Performers</button>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Great</div>
+  <span class="legend-sep">|</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Good</div>
+  <span class="legend-sep">|</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> Needs Improvement</div>
+  <span class="legend-sep">|</span>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Critical</div>
+</div>
+
+<div class="table-wrap">
+  <table id="agentTable">
+    <thead>
+      <tr>
+        <th onclick="sortBy('rank')">#<span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('name')">Agent Name<span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('chats')">Handled Chats<span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('aht')">AHT (sec) · tier<span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('avail')">Avg Availability<span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('csat')">CSAT Score<span class="sort-icon">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="empty-state" id="emptyState">
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <p>No agents match your search</p>
+  </div>
+</div>
+
+<script>
+// ====================== DATA ======================
+const agents = [
+  { name: "Rahma Ashraf Sayed Hamed Abdo", chats: 181, aht: 1016.4, avail: 5.43, csat: 4.385, csatCount: 13 },
+  { name: "T Seifeldin Fekry", chats: 166, aht: 1278.9, avail: 7.36, csat: 4.909, csatCount: 11 },
+  { name: "Asmaa Elsayed", chats: 159, aht: 1371.7, avail: 6.17, csat: 5.000, csatCount: 11 },
+  { name: "TP Reham Abdelmohsen Mohamed Abdelwahab", chats: 156, aht: 1152.7, avail: 6.94, csat: 4.688, csatCount: 16 },
+  { name: "Nourhan Hamed", chats: 150, aht: 1510.2, avail: 7.04, csat: 4.600, csatCount: 10 },
+  { name: "Mariam Mamdouh Khalifa Mahmoud Bakhit", chats: 147, aht: 1088.8, avail: 6.10, csat: 4.800, csatCount: 15 },
+  { name: "Ziad Taha Abdelwahab Ibrahim", chats: 144, aht: 1578.0, avail: 6.57, csat: 4.875, csatCount: 8 },
+  { name: "Wafaa Hassan", chats: 143, aht: 1039.8, avail: 7.28, csat: 4.737, csatCount: 19 },
+  { name: "Taha Mohamed", chats: 138, aht: 724.8, avail: 7.54, csat: 4.857, csatCount: 21 },
+  { name: "Mennatullah Rashed", chats: 137, aht: 1471.3, avail: null, csat: 4.846, csatCount: 13 },
+  { name: "Nourhan Saadeldin", chats: 132, aht: 1214.6, avail: 7.34, csat: 4.556, csatCount: 9 },
+  { name: "Mohamed Tagelser Sayed", chats: 129, aht: 1113.0, avail: 6.83, csat: 4.955, csatCount: 22 },
+  { name: "Hossam Ashraf Mahmoud Shaker Mohamed", chats: 128, aht: 728.0, avail: 5.88, csat: 4.714, csatCount: 21 },
+  { name: "Abdullah Hassan", chats: 126, aht: 766.4, avail: 6.43, csat: 4.500, csatCount: 20 },
+  { name: "Hasan Nagd Mahmood", chats: 114, aht: 1288.5, avail: 5.68, csat: 3.917, csatCount: 12 },
+  { name: "Meronia Magdy Mahrous Narouz", chats: 112, aht: 1204.9, avail: 6.64, csat: 5.000, csatCount: 15 },
+  { name: "Mina Edwar Alber Iskandar", chats: 110, aht: 999.4, avail: 6.00, csat: 4.750, csatCount: 12 },
+  { name: "Mariam Sayed", chats: 107, aht: 1274.0, avail: 7.14, csat: 5.000, csatCount: 7 },
+  { name: "Malak Mahmoud Hamdy Fahmy", chats: 107, aht: 1450.2, avail: 5.82, csat: 4.400, csatCount: 10 },
+  { name: "TP Ziad Ali Ibrahim Ahmed", chats: 102, aht: 1597.0, avail: 4.66, csat: 5.000, csatCount: 3 },
+  { name: "Youssef Mohamed Saeed Ali Abdelrahman", chats: 101, aht: 1534.7, avail: 6.17, csat: 5.000, csatCount: 10 },
+  { name: "TP Yehia Seifeldin Abdelraouf Abdallah", chats: 97, aht: 1531.8, avail: 4.66, csat: 4.200, csatCount: 10 },
+  { name: "Ammar Yasser Kamal Seddik", chats: 93, aht: 710.5, avail: 7.10, csat: 4.280, csatCount: 25 },
+  { name: "Mohamed Mahrous", chats: 83, aht: 775.6, avail: null, csat: 4.737, csatCount: 19 },
+  { name: "Ahlam Saeed", chats: 82, aht: 1396.4, avail: 5.87, csat: 4.600, csatCount: 10 },
+  { name: "TP Shahd Badr Shawky Ibrahim", chats: 79, aht: 1017.9, avail: 7.54, csat: 4.235, csatCount: 17 },
+  { name: "Mahmoud Ahmed", chats: 77, aht: 1583.9, avail: 4.41, csat: 4.200, csatCount: 5 },
+  { name: "Alaa Emadeldin Mohamed Ali", chats: 75, aht: 1130.7, avail: 6.10, csat: 4.933, csatCount: 15 },
+  { name: "Hany Gamil", chats: 72, aht: 1185.4, avail: 7.67, csat: 4.400, csatCount: 5 },
+  { name: "Ramez Reda Mohamed Abdelkader Elawady", chats: 64, aht: 1066.9, avail: 3.78, csat: 5.000, csatCount: 7 },
+  { name: "Mohamed Ahmed Mohamed Abdelhafiz", chats: 47, aht: 924.3, avail: null, csat: 4.200, csatCount: 5 },
+  { name: "Zeyad Mahmoud", chats: 34, aht: 968.4, avail: 2.24, csat: 5.000, csatCount: 3 },
+  { name: "AbdelRahman Eldosouky", chats: 34, aht: 1166.3, avail: null, csat: 5.000, csatCount: 6 },
+  { name: "Yousry Mostafa Mohamed Ezzeldin Mohamed", chats: 33, aht: 693.0, avail: null, csat: 5.000, csatCount: 4 },
+  { name: "Abdelrahman Alaa Farouk Abdelrahim", chats: 6, aht: 603.7, avail: 0.19, csat: null, csatCount: 0 },
+  { name: "Ahmed Mahrous", chats: 5, aht: 609.2, avail: 0.46, csat: null, csatCount: 0 },
+  { name: "Osama Mahmoud", chats: 1, aht: 1261.0, avail: null, csat: null, csatCount: 0 },
+  { name: "Mahmoud Ramadan", chats: 1, aht: 189.0, avail: 0.72, csat: null, csatCount: 0 },
+];
+
+// ── Justlife Agent Performance Framework ──────────────────────────────────
+// CSAT:  Great ≥4.8 | Good 4.5–4.7 | Need Improvement 4.0–4.4 | Critical <4.0
+// AHT:   Great ≤840s(14m) | Good 840–1140s(14–19m) | NI 1140–1320s(19–22m) | Crit >1320s
+// Avail: Great ≥7.5h | Good 6.5–7.4h | NI 4–6.4h | Critical <4h
+// ──────────────────────────────────────────────────────────────────────────
+
+function ahtColor(val) {
+  if (val === null) return 'muted';
+  if (val <= 840)  return 'green';   // Great  ≤14 min
+  if (val <= 1140) return 'yellow';  // Good   14–19 min
+  if (val <= 1320) return 'orange';  // Need Improvement 19–22 min
+  return 'red';                      // Critical >22 min
+}
+function csatColor(val) {
+  if (val === null) return 'muted';
+  if (val >= 4.8)  return 'green';   // Great
+  if (val >= 4.5)  return 'yellow';  // Good
+  if (val >= 4.0)  return 'orange';  // Need Improvement
+  return 'red';                      // Critical
+}
+function availColor(val) {
+  if (val === null) return 'muted';
+  if (val >= 7.5)  return 'green';   // Great
+  if (val >= 6.5)  return 'yellow';  // Good
+  if (val >= 4.0)  return 'orange';  // Need Improvement
+  return 'red';                      // Critical
+}
+
+// "Top Performers" = Great on all 3
+function isTopPerformer(a) {
+  return csatColor(a.csat) === 'green' &&
+         ahtColor(a.aht)   === 'green' &&
+         availColor(a.avail) === 'green';
+}
+
+// "Low Performers" = Critical on all 3 (red on all)
+function isLowPerformer(a) {
+  if (a.chats < 5) return false;
+  return csatColor(a.csat) === 'red' &&
+         ahtColor(a.aht)   === 'red' &&
+         availColor(a.avail) === 'red';
+}
+
+// "Needs Improvement" = at least one orange or red metric, but not all-red
+function needsImprovement(a) {
+  if (a.chats < 5) return false;
+  if (isLowPerformer(a)) return false;
+  const cc = csatColor(a.csat);
+  const ac = ahtColor(a.aht);
+  const vc = availColor(a.avail);
+  return [cc, ac, vc].some(c => c === 'red' || c === 'orange');
+}
+
+function fmtAvail(h) {
+  if (h === null) return '—';
+  const hr = Math.floor(h);
+  const min = Math.round((h - hr) * 60);
+  return `${hr}h ${min}m`;
+}
+
+function tierLabel(color) {
+  return { green: 'Great', yellow: 'Good', orange: 'Need Improvement', red: 'Critical', muted: '—' }[color] || '—';
+}
+
+let currentSort = { field: 'chats', dir: -1 };
+let currentFilter = 'all';
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','top','active','improve','low'].forEach(id => {
+    const btn = document.getElementById('f-' + id);
+    btn.classList.remove('active', 'active-red', 'active-yellow', 'active-orange');
+  });
+  const btn = document.getElementById('f-' + f);
+  if (f === 'low') btn.classList.add('active-red');
+  else if (f === 'improve') btn.classList.add('active-orange');
+  else btn.classList.add('active');
+  renderTable();
+}
+
+function sortBy(field) {
+  if (currentSort.field === field) currentSort.dir *= -1;
+  else { currentSort.field = field; currentSort.dir = field === 'name' ? 1 : -1; }
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sorted'));
+  renderTable();
+}
+
+function isActiveThisWeek(a) { return a.chats > 0; }
+
+function renderTable() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  let data = agents.filter(a => {
+    if (q && !a.name.toLowerCase().includes(q)) return false;
+    if (currentFilter === 'top') return isTopPerformer(a);
+    if (currentFilter === 'active') return isActiveThisWeek(a);
+    if (currentFilter === 'low') return isLowPerformer(a);
+    if (currentFilter === 'improve') return needsImprovement(a);
+    return true;
+  });
+
+  const { field, dir } = currentSort;
+  data.sort((a, b) => {
+    let av = field === 'name' ? a.name : (a[field] ?? -Infinity);
+    let bv = field === 'name' ? b.name : (b[field] ?? -Infinity);
+    if (typeof av === 'string') return av.localeCompare(bv) * dir;
+    return (av - bv) * dir;
+  });
+
+  const body = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  if (data.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  body.innerHTML = data.map((a, i) => {
+    const ac = ahtColor(a.aht);
+    const cc = csatColor(a.csat);
+    const vc = availColor(a.avail);
+
+    const ahtCell = `<span class="metric-cell ${ac}" title="${tierLabel(ac)}"><span class="dot"></span>${a.aht.toFixed(0)}s</span>`;
+    const csatCell = a.csat !== null
+      ? `<span class="metric-cell ${cc}" title="${tierLabel(cc)}"><span class="dot"></span>${a.csat.toFixed(3)} <span style="font-size:10px;opacity:0.6;">(n=${a.csatCount})</span></span>`
+      : `<span class="no-csat">No ratings</span>`;
+    const availCell = a.avail !== null
+      ? `<span class="metric-cell ${vc}" title="${tierLabel(vc)}"><span class="dot"></span>${fmtAvail(a.avail)}</span>`
+      : `<span class="no-csat">—</span>`;
+
+    const topBadge = isTopPerformer(a) ? `<span style="margin-left:6px;font-size:10px;background:rgba(34,197,94,0.15);color:var(--green);border:1px solid var(--green-border);border-radius:4px;padding:1px 5px;">GREAT</span>` : '';
+    const lowBadge = isLowPerformer(a) ? `<span style="margin-left:6px;font-size:10px;background:rgba(239,68,68,0.15);color:var(--red);border:1px solid var(--red-border);border-radius:4px;padding:1px 5px;">CRITICAL</span>` : '';
+    const improveBadge = needsImprovement(a) ? `<span style="margin-left:6px;font-size:10px;background:rgba(249,115,22,0.15);color:var(--orange);border:1px solid var(--orange-border);border-radius:4px;padding:1px 5px;">IMPROVE</span>` : '';
+
+    return `<tr>
+      <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px;">${i + 1}</td>
+      <td>
+        <div class="agent-name">${a.name}${topBadge}${lowBadge}${improveBadge}</div>
+        <div class="agent-row">${a.chats} chats handled this week</div>
+      </td>
+      <td><span class="handles-cell">${a.chats.toLocaleString()}</span></td>
+      <td>${ahtCell}</td>
+      <td>${availCell}</td>
+      <td>${csatCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+
+function renderKPIs() {
+  const active = agents.filter(a => a.chats > 0);
+  const totalChats = agents.reduce((s, a) => s + a.chats, 0);
+  const csatAgents = agents.filter(a => a.csat !== null && a.csatCount > 0);
+  const totalRatings = csatAgents.reduce((s, a) => s + a.csatCount, 0);
+  const avgCSAT = csatAgents.reduce((s, a) => s + a.csat * a.csatCount, 0) / totalRatings;
+  const topCount = agents.filter(isTopPerformer).length;
+
+  document.getElementById('kpiBar').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Total Agents</div>
+      <div class="kpi-value" style="color:var(--accent2)">${active.length}</div>
+      <div class="kpi-sub">active this week</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Chats Handled</div>
+      <div class="kpi-value">${totalChats.toLocaleString()}</div>
+      <div class="kpi-sub">across all agents</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Team Avg CSAT</div>
+      <div class="kpi-value" style="color:${avgCSAT >= 4.8 ? 'var(--green)' : avgCSAT >= 4.5 ? 'var(--yellow)' : avgCSAT >= 4.0 ? 'var(--orange)' : 'var(--red)'}">${avgCSAT.toFixed(3)}</div>
+      <div class="kpi-sub">${avgCSAT >= 4.8 ? 'Great' : avgCSAT >= 4.5 ? 'Good' : avgCSAT >= 4.0 ? 'Need Improvement' : 'Critical'} · Justlife Framework</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Top Performers</div>
+      <div class="kpi-value" style="color:var(--green)">${topCount}</div>
+      <div class="kpi-sub">meet all 3 targets</div>
+    </div>
+  `;
+}
+
+renderKPIs();
+renderTable();
+</script>
+</body>
+</html>
